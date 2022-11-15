@@ -55,19 +55,28 @@ struct HeadsetDemoApp: App {
     @State private var preferredInput: AVAudioSessionPortDescription? = nil
     @State private var availableInputs: [AVAudioSessionPortDescription] = []
     @State private var audioData: [AVAudioPCMBuffer] = []
+
     @State private var category: AVAudioSession.Category? = nil
+    @State private var categoryOptions: AVAudioSession.CategoryOptions = []
+    @State private var mode: AVAudioSession.Mode? = nil
 
 
     func setupObserver() {
         let audioSession: AVAudioSession = AVAudioSession.sharedInstance()
 
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            isAudioEngineRunning = audioEngine.isRunning
-            isAudioPlayerNodePlaying = audioPlayerNode.isPlaying
+            // audio session observers
             availableInputs = audioSession.availableInputs ?? []
             category = audioSession.category
+            mode = audioSession.mode
+            categoryOptions = audioSession.categoryOptions
+
             isOtherAudioPlaying = audioSession.isOtherAudioPlaying
             preferredInput = audioSession.preferredInput
+
+            // audio engine observers
+            isAudioEngineRunning = audioEngine.isRunning
+            isAudioPlayerNodePlaying = audioPlayerNode.isPlaying
             inputNodeInputFormat = audioEngine.inputNode.inputFormat(forBus: 0)
             inputNodeOutputFormat = audioEngine.inputNode.outputFormat(forBus: 0)
             attachedNodes = audioEngine.attachedNodes.map { element -> AVAudioNode in element }
@@ -181,6 +190,9 @@ struct HeadsetDemoApp: App {
             VStack {
                 Text("Other playing audio: \(isOtherAudioPlaying ? "yes" : "no")")
                 Text("Category: \(category?.rawValue ?? "nil")")
+                Text("Mode: \(mode?.rawValue ?? "nil")")
+                Text("Category Options: \(categoryOptions.rawValue)")
+
                 HStack {
                     Button("Set category") {
                         setCategory()
