@@ -57,6 +57,7 @@ struct HeadsetDemoApp: App {
     @State private var audioData: [AVAudioPCMBuffer] = []
     @State private var category: AVAudioSession.Category? = nil
 
+
     func setupObserver() {
         let audioSession: AVAudioSession = AVAudioSession.sharedInstance()
 
@@ -119,15 +120,27 @@ struct HeadsetDemoApp: App {
         isRecording = false
     }
 
+    func setCategory() {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(
+                    .playAndRecord,
+                    mode: .default,
+                    options: [.allowBluetooth]
+            )
+        } catch {
+            print("Error setting audio session category: \(error)")
+        }
+    }
+
     func setupAudioEngine() {
         audioEngine.attach(audioPlayerNode)
         audioEngine.connect(audioPlayerNode, to: audioEngine.outputNode, format: nil)
-
     }
 
     func installTap() {
         print("Installing tap")
-        audioEngine.inputNode.installTap(onBus: 0, bufferSize: 8000, format: nil) { buffer, time in
+        let format = audioEngine.inputNode.inputFormat(forBus: 0)
+        audioEngine.inputNode.installTap(onBus: 0, bufferSize: 8000, format: format) { buffer, time in
             if (isRecording) {
                 audioData.append(buffer)
             }
@@ -170,15 +183,7 @@ struct HeadsetDemoApp: App {
                 Text("Category: \(category?.rawValue ?? "nil")")
                 HStack {
                     Button("Set category") {
-                        do {
-                            try AVAudioSession.sharedInstance().setCategory(
-                                    .playAndRecord,
-                                    mode: .default,
-                                    options: [.allowBluetooth]
-                            )
-                        } catch {
-                            print("Error setting audio session category: \(error)")
-                        }
+                        setCategory()
                     }
                     Button("Activate") {
                         do {
@@ -196,29 +201,6 @@ struct HeadsetDemoApp: App {
                     }
                 }
             }
-
-            HStack {
-                Text("Recording").bold()
-
-                Text(isRecording ? "yes" : "no")
-
-                if (!audioData.isEmpty && !isRecording) {
-                    Button("Play") {
-                        playRecording()
-                    }
-                }
-
-                if (!isRecording) {
-                    Button("Start") {
-                        startRecording()
-                    }
-                } else {
-                    Button("Stop") {
-                        stopRecording()
-                    }
-                }
-            }
-
             Text("AudioEngine").bold().padding()
 
             VStack {
@@ -278,6 +260,30 @@ struct HeadsetDemoApp: App {
                         removeTap()
                     }
                 }
+
+
+                HStack {
+                    Text("Recording").bold()
+
+                    Text(isRecording ? "yes" : "no")
+
+                    if (!audioData.isEmpty && !isRecording) {
+                        Button("Play") {
+                            playRecording()
+                        }
+                    }
+
+                    if (!isRecording) {
+                        Button("Start") {
+                            startRecording()
+                        }
+                    } else {
+                        Button("Stop") {
+                            stopRecording()
+                        }
+                    }
+                }
+
                 if (isAudioEngineRunning) {
                     Button("Play sound") {
                         playSound()
