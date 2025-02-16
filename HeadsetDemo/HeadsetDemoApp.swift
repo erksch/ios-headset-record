@@ -31,7 +31,6 @@ class Observer: NSObject {
     }
 }
 
-
 @main
 struct HeadsetDemoApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -82,8 +81,24 @@ struct HeadsetDemoApp: App {
             attachedNodes = audioEngine.attachedNodes.map { element -> AVAudioNode in element }
         }
 
-        // observer = Observer { toggleRecording() }
-        // AVAudioSession.sharedInstance().addObserver(observer!, forKeyPath: "outputVolume", options: .new, context: nil)
+        observer = Observer {
+            print("Volume button pressed")
+            toggleRecording()
+        }
+        AVAudioSession.sharedInstance().addObserver(observer!, forKeyPath: "outputVolume", options: .new, context: nil)
+    }
+
+    func scheduleSound() {
+        do {
+            let soundFile = try getSoundFile(name: "sound")
+            audioPlayerNode.scheduleFile(soundFile, at: nil)
+        } catch {
+            print("Unable to schedule sound: \(error)")
+        }
+    }
+    
+    func playSystemSound() {
+        AudioServicesPlayAlertSound(SystemSoundID(1016))
     }
 
     func playSound() {
@@ -111,10 +126,16 @@ struct HeadsetDemoApp: App {
     }
 
     func toggleRecording() {
-        if (isRecording) {
-            stopRecording()
+        if (!audioEngine.isRunning) {
+            print("Starting recording")
+            do {
+                try audioEngine.start()
+            } catch {
+                print("Error starting audio engine: \(error)")
+            }
         } else {
-            startRecording()
+            print("Stopping recording")
+            audioEngine.stop()
         }
     }
 
@@ -161,6 +182,13 @@ struct HeadsetDemoApp: App {
         audioEngine.inputNode.removeTap(onBus: 0)
     }
 
+    func setAudioSessionActive(active: Bool) {
+        do {
+            try AVAudioSession.sharedInstance().setActive(active)
+        } catch {
+            print("Error setting audio session active to \(active): \(error)")
+        }
+    }
 
     func setupCommandCenter() {
         /**
@@ -197,19 +225,14 @@ struct HeadsetDemoApp: App {
                     Button("Set category") {
                         setCategory()
                     }
+                    Button("Allow sounds") {
+                        try! AVAudioSession.sharedInstance().setAllowHapticsAndSystemSoundsDuringRecording(true)
+                    }
                     Button("Activate") {
-                        do {
-                            try AVAudioSession.sharedInstance().setActive(true)
-                        } catch {
-                            print("Error enabling audio session: \(error)")
-                        }
+                        setAudioSessionActive(active: true)
                     }
                     Button("Deactivate") {
-                        do {
-                            try AVAudioSession.sharedInstance().setActive(false)
-                        } catch {
-                            print("Error disabling audio session: \(error)")
-                        }
+                        setAudioSessionActive(active: false)
                     }
                 }
             }
@@ -241,6 +264,9 @@ struct HeadsetDemoApp: App {
                     Text("Engine").bold()
                     Button("Setup") {
                         setupAudioEngine()
+                    }
+                    Button("Prepare") {
+                        audioEngine.prepare()
                     }
                     if (isAudioEngineRunning) {
                         Button("Stop") {
@@ -297,9 +323,25 @@ struct HeadsetDemoApp: App {
                 }
 
                 if (isAudioEngineRunning) {
-                    Button("Play sound") {
-                        playSound()
+
+                    HStack {
+                        Text("Player").bold()
+                        Button("Sound") {
+                            playSound()
+                        }
+                        Button("Schedule") {
+                            scheduleSound()
+                        }
+                        Button("Play") {
+                            audioPlayerNode.play()
+                        }
+                        Button("Pause") {
+                            audioPlayerNode.pause()
+                        }
                     }
+                }
+                Button("System") {
+                    playSystemSound()
                 }
             }
 
